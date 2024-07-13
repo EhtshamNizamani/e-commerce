@@ -9,7 +9,10 @@ app.use(express.json());
 
 //imports
 import userRouter from "../src/routes/user.route.js";
+import adminRouter from "../src/routes/admin.route.js";
+
 //routers
 app.use("/api/v1/users", userRouter);
+app.use("/api/v1/admin", adminRouter);
 
 export { app };

@@ -4,23 +4,23 @@ import { ApiResponse } from "../utils/apiResponse.js";
 import { generateAccessAndRefreshToken } from "../utils/generateTokens.js";
 import { User } from "../model/user.model.js";
 
-const createUser = asyncHandler(async (req, res) => {
+const createAdmin = asyncHandler(async (req, res) => {
   const { name, email, password } = req.body;
 
   const existedUser = await User.findOne({ email });
   if (existedUser) {
     throw new ApiError(400, "This email is already register us");
   }
-  const newUser = await User.create({ name, email, password });
+  const newUser = await User.create({ name, email, password, role: "admin" });
   const createdUser = await User.findById(newUser._id).select(
     "-password -refreshToken"
   );
   return res
     .status(200)
-    .json(new ApiResponse(201, createdUser, "User created successfully"));
+    .json(new ApiResponse(201, createdUser, "Admin created successfully"));
 });
 
-const loginUser = asyncHandler(async (req, res) => {
+const loginAdmin = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
 
   const user = await User.findOne({ email });
@@ -50,4 +50,4 @@ const loginUser = asyncHandler(async (req, res) => {
     );
 });
 
-export { createUser, loginUser };
+export { createAdmin, loginAdmin as adminLogin };
