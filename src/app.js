@@ -8,8 +8,8 @@ app.use(urlencoded({ extended: true }));
 app.use(express.json());
 
 //imports
-
+import userRouter from "../src/routes/user.route.js";
 //routers
-app.use("api/v1/users");
+app.use("/api/v1/users", userRouter);
 
 export { app };
