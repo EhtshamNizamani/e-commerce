@@ -8,16 +8,20 @@ const userSchema = new Schema(
   {
     name: {
       type: String,
-      required: true,
+      required: [true, "Name is required"],
+      minlength: [3, "Name must be at least 3 characters long"],
+      maxlength: [50, "Name must be at most 50 characters long"],
     },
     email: {
       type: String,
-      required: true,
+      required: [true, "Email is required"],
       unique: true,
+      match: [/\S+@\S+\.\S+/, "Email is not valid"],
     },
     password: {
       type: String,
-      required: true,
+      required: [true, "Password is required"],
+      minlength: [8, "Password must be at least 8 characters long"],
     },
     refreshToken: {
       type: String,
