@@ -21,7 +21,6 @@ const jwtAuth = async (req, res, next) => {
     }
     req.user = user;
 
-    console.log(decodeToken);
     next();
   } catch (error) {
     throw new ApiError(401, "Invalid user" + error);
