@@ -2,11 +2,16 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/apiError.js";
 import { ApiResponse } from "../utils/apiResponse.js";
 import { Product } from "../model/product.model.js";
+import { User } from "../model/user.model.js";
 
 const createProduct = asyncHandler(async (req, res) => {
   const { title, description, price, category, brand, stock, image } = req.body;
   if (!req.user?._id) {
     throw new ApiError(400, "Invalid user");
+  }
+  const user = await User.findById(req.user?._id);
+  if (user.role != "admin") {
+    throw new ApiError(400, "only admin can create product");
   }
   const product = await Product.create({
     title,
@@ -62,6 +67,10 @@ const editProduct = asyncHandler(async (req, res) => {
   if (!product_id) {
     throw new ApiError(400, "product not found");
   }
+  const user = await User.findById(req.user?._id);
+  if (user.role != "admin") {
+    throw new ApiError(400, "only admin can edit product");
+  }
   const updateFields = {
     title,
     description,
@@ -97,13 +106,18 @@ const editProduct = asyncHandler(async (req, res) => {
 
 const deleteProduct = asyncHandler(async (req, res) => {
   const productId = req.params.product_id;
-
+  const user = await User.findById(req.user?._id);
+  if (user.role != "admin") {
+    throw new ApiError(400, "only admin can edit product");
+  }
   if (!productId) {
     throw new ApiError(404, "Product not found");
   }
 
-  await Product.findByIdAndDelete(productId);
-
+  const deletedProduct = await Product.findByIdAndDelete(productId);
+  if (!deletedProduct) {
+    throw new ApiError(404, "Product not found");
+  }
   res
     .status(200)
     .json(new ApiResponse(201, {}, "Product deleted successfully"));
