@@ -6,6 +6,8 @@ import {
   editProduct,
   deleteProduct,
   getSingleProduct,
+  getProductByCategory,
+  addReview,
 } from "../controller/product.controller.js";
 const router = Router();
 
@@ -14,5 +16,7 @@ router.route("/get").get(jwtAuth, getAllProduct);
 router.route("/edit/:product_id").patch(jwtAuth, editProduct);
 router.route("/delete/:product_id").delete(jwtAuth, deleteProduct);
 router.route("/get-single/:product_id").get(jwtAuth, getSingleProduct);
+router.route("/category").get(jwtAuth, getProductByCategory);
+router.route("/add-review/:product_id").post(jwtAuth, addReview);
 
 export default router;

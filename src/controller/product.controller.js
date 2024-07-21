@@ -3,6 +3,7 @@ import { ApiError } from "../utils/apiError.js";
 import { ApiResponse } from "../utils/apiResponse.js";
 import { Product } from "../model/product.model.js";
 import { User } from "../model/user.model.js";
+import mongoose from "mongoose";
 
 const createProduct = asyncHandler(async (req, res) => {
   const { title, description, price, category, brand, stock, image } = req.body;
@@ -21,7 +22,6 @@ const createProduct = asyncHandler(async (req, res) => {
     brand,
     stock,
     image,
-    ratings: [{ user: req.user._id, rating: 0, review: "" }],
   });
 
   res
@@ -135,10 +135,59 @@ const getSingleProduct = asyncHandler(async (req, res) => {
     .json(new ApiResponse(201, product, "Product fetched successfully"));
 });
 
+const getProductByCategory = asyncHandler(async (req, res) => {
+  const { category } = req.body;
+
+  if (!category) {
+    throw new ApiError(404, "Please provide a category");
+  }
+  const product = await Product.find({ category });
+  if (!product) {
+    throw new ApiError(404, "Product not found");
+  }
+  res
+    .status(200)
+    .json(new ApiResponse(201, product, "Product fetched by category"));
+});
+
+const addReview = asyncHandler(async (req, res) => {
+  const { review, rating } = req.body;
+  const { product_id } = req.params;
+
+  const product = await Product.findByIdAndUpdate(
+    product_id,
+    {
+      $push: {
+        ratings: {
+          user: req.user._id,
+          rating,
+          review,
+        },
+      },
+      $inc: {
+        numReviews: 1,
+      },
+    },
+
+    {
+      new: true,
+    }
+  );
+  if (!product) {
+    throw new ApiError(404, "Product not found");
+  }
+  console.log(review);
+  console.log(rating);
+  res
+    .status(200)
+    .json(new ApiResponse(201, product, "Product fetched by category"));
+});
 export {
   createProduct,
   getAllProduct,
   editProduct,
   deleteProduct,
   getSingleProduct,
+  getProductByCategory,
+  addReview,
 };

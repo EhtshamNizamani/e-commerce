@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import mongooseAggregatePaginate from "mongoose-aggregate-paginate-v2";
 
 const Schema = mongoose.Schema;
 
@@ -36,23 +37,7 @@ const productSchema = new Schema(
       type: String, // URL to the product image
       required: [true, "Image is required"],
     },
-    ratings: [
-      {
-        user: {
-          type: mongoose.Schema.Types.ObjectId,
-          ref: "User",
-        },
-        rating: {
-          type: Number,
-          required: true,
-          min: 0,
-          max: 5,
-        },
-        review: {
-          type: String,
-        },
-      },
-    ],
+    ratings: [],
     numReviews: {
       type: Number,
       default: 0,
@@ -60,6 +45,8 @@ const productSchema = new Schema(
   },
   { timestamps: true }
 );
+
+productSchema.plugin(mongooseAggregatePaginate);
 
 const Product = mongoose.model("Product", productSchema);
 
