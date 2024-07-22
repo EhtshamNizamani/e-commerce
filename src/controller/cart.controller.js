@@ -42,4 +42,23 @@ const addToCart = asyncHandler(async (req, res) => {
     .json(new ApiResponse(201, cart, "Product added successfully to the cart"));
 });
 
-export { addToCart };
+const getCartProduct = asyncHandler(async (req, res) => {
+  const userId = req.user._id;
+  const cart = await Cart.aggregate([
+    {
+      $match: {
+        user: userId,
+      },
+    },
+  ]);
+
+  if (!cart) {
+    throw new ApiError(404, "Cart not found");
+  }
+
+  res
+    .status(200)
+    .json(new ApiResponse(200, cart[0], "Cart retrieved successfully"));
+});
+
+export { addToCart, getCartProduct };
