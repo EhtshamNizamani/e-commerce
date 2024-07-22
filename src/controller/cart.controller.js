@@ -53,7 +53,7 @@ const getCartProduct = asyncHandler(async (req, res) => {
   ]);
 
   if (!cart) {
-    throw new ApiError(404, "Cart not found");
+    throw new ApiError(404, "Cart not found!");
   }
 
   res
