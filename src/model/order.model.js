@@ -1,4 +1,6 @@
 import mongoose from "mongoose";
+import aggregatePaginate from "mongoose-aggregate-paginate-v2";
+
 const Schema = mongoose.Schema;
 
 const orderSchema = new Schema({
@@ -12,9 +14,12 @@ const orderSchema = new Schema({
   },
   quantity: {
     type: Number,
-    require: true,
+    required: true,
   },
 });
+
+orderSchema.plugin(aggregatePaginate);
+
 const Order = mongoose.model("Order", orderSchema);
 
 export { Order };
