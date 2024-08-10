@@ -13,6 +13,7 @@ import adminRouter from "../src/routes/admin.route.js";
 import productRouter from "./routes/product.route.js";
 import cartRouter from "./routes/cart.route.js";
 import favoriteRouter from "./routes/favorite.route.js";
+import orderRouter from "./routes/order.route.js";
 
 //routers
 
@@ -25,5 +26,6 @@ app.use("/api/v1/admin", adminRouter);
 app.use("/api/v1/products", productRouter);
 app.use("/api/v1/carts", cartRouter);
 app.use("/api/v1/favorite", favoriteRouter);
+app.use("/api/v1/order", orderRouter);
 
 export { app };

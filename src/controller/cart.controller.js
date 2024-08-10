@@ -2,7 +2,6 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/apiError.js";
 import { ApiResponse } from "../utils/apiResponse.js";
 import { Cart } from "../model/cart.model.js";
-import { User } from "../model/user.model.js";
 import { Product } from "../model/product.model.js";
 const addToCart = asyncHandler(async (req, res) => {
   const { product_id } = req.params;
