@@ -3,7 +3,8 @@ import { ApiError } from "../utils/apiError.js";
 import { ApiResponse } from "../utils/apiResponse.js";
 import { Product } from "../model/product.model.js";
 import { Order } from "../model/order.model.js";
-import mongoose from "mongoose";
+import Stripe from "stripe";
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 const order = asyncHandler(async (req, res) => {
   const { product_id } = req.params;
   const { orderCount } = req.body;
@@ -16,12 +17,45 @@ const order = asyncHandler(async (req, res) => {
   if (!orderCount) {
     throw new ApiError(404, "Order min 1 product");
   }
-  console.log(orderCount);
   if (orderCount < 1) {
     throw new ApiError(401, "Your should have at least 1 product to order");
   } else if (product.stock < orderCount) {
     throw new ApiError(401, "We don't have that much stock right now");
   }
+
+  // Calculate the total amount
+  const totalAmount = product.price * orderCount;
+
+  // Create a payment method using Stripe's test card
+  const paymentMethod = await stripe.paymentMethods.create({
+    type: "card",
+    card: {
+      number: "4242424242424242", // Test card number
+      exp_month: 12,
+      exp_year: 2024,
+      cvc: "123",
+    },
+  });
+
+  // Extract the paymentMethodId from the response
+  const paymentMethodId = paymentMethod.id;
+
+  // Step 1: Confirm payment with Stripe
+  const paymentIntent = await stripe.paymentIntents.create({
+    amount: 1 * 100, // Convert amount to cents
+    currency: "usd",
+    automatic_payment_methods: {
+      allow_redirects: "never",
+      enabled: true,
+    },
+    payment_method: paymentMethodId, // Use the payment method created above
+    confirm: true, // Automatically confirm the payment
+  });
+
+  if (paymentIntent.status !== "succeeded") {
+    throw new ApiError(402, "Payment failed. Please try again.");
+  }
+
   const orderedProduct = await Order.create({
     userId: req.user?._id,
     productId: product_id,
