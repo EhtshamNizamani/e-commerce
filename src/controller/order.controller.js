@@ -3,28 +3,17 @@ import { ApiError } from "../utils/apiError.js";
 import { ApiResponse } from "../utils/apiResponse.js";
 import { Product } from "../model/product.model.js";
 import { Order } from "../model/order.model.js";
+import { User } from "../model/user.model.js";
 import Stripe from "stripe";
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 const order = asyncHandler(async (req, res) => {
-  const { product_id } = req.params;
-  const { orderCount } = req.body;
+  const userId = req.user?._id;
+  const { products, shippingAddress } = req.body;
 
-  const product = await Product.findById({ _id: product_id });
-
-  if (!product) {
-    throw new ApiError(404, "Product not found");
-  }
-  if (!orderCount) {
-    throw new ApiError(404, "Order min 1 product");
-  }
-  if (orderCount < 1) {
-    throw new ApiError(401, "Your should have at least 1 product to order");
-  } else if (product.stock < orderCount) {
-    throw new ApiError(401, "We don't have that much stock right now");
-  }
-
-  // Calculate the total amount
-  const totalAmount = product.price * orderCount;
+  const totalAmount = products.reduce(
+    (acc, product) => acc + product.price * product.quantity,
+    0
+  );
 
   // Create a payment method using Stripe's test card
   const paymentMethod = await stripe.paymentMethods.create({
@@ -56,38 +45,41 @@ const order = asyncHandler(async (req, res) => {
     throw new ApiError(402, "Payment failed. Please try again.");
   }
 
-  const orderedProduct = await Order.create({
-    userId: req.user?._id,
-    productId: product_id,
-    quantity: orderCount,
+  const orderedProduct = new Order({
+    userId,
+    products,
+    shippingAddress,
+    totalAmount,
+    status: "Pending",
+    paymentStatus: "Pending",
   });
 
-  await Product.findByIdAndUpdate(
-    product_id,
-    {
-      $inc: { stock: -orderCount },
-    },
-    {
-      new: true,
+  await orderedProduct.save();
+  for (const item of products) {
+    const product = await Product.findById(item.productId);
+
+    if (!product) {
+      return res
+        .status(404)
+        .json({ error: `Product with ID ${item.productId} not found` });
     }
-  );
-  const orderDetails = {
-    orderId: orderedProduct._id,
-    userId: orderedProduct.userId,
-    productId: orderedProduct.productId,
-    productName: product.name,
-    productDescription: product.description,
-    productPrice: product.price,
-    quantity: orderedProduct.quantity,
-    totalAmount: product.price * orderCount,
-  };
+
+    if (product.stock < item.quantity) {
+      return res
+        .status(400)
+        .json({ error: `Insufficient stock for ${product.name}` });
+    }
+
+    product.stock -= item.quantity;
+    await product.save();
+  }
 
   res
     .status(200)
     .send(
       new ApiResponse(
         201,
-        orderDetails,
+        orderedProduct,
         "you have successfully purchased order"
       )
     );
@@ -140,4 +132,73 @@ const getOrder = asyncHandler(async (req, res) => {
   res.status(200).send("");
 });
 
-export { order, getOrder };
+const getAllOrders = asyncHandler(async (req, res) => {
+  try {
+    const { page = 1, limit = 10 } = req.query;
+
+    const userId = req.user?._id;
+
+    const user = await User.findById(userId);
+    if (user.role != "admin") {
+      throw new ApiError(400, "only admin can user this feature");
+    }
+    const pipeline = [
+      {
+        $lookup: {
+          from: "users", // Collection name in MongoDB
+          localField: "userId",
+          foreignField: "_id",
+          as: "userDetails",
+        },
+      },
+      {
+        $lookup: {
+          from: "products", // Collection name in MongoDB
+          localField: "products.productId",
+          foreignField: "_id",
+          as: "productDetails",
+        },
+      },
+      {
+        $unwind: "$products",
+      },
+      {
+        $group: {
+          _id: "$_id",
+          userId: { $first: "$userId" },
+          totalAmount: { $first: "$totalAmount" },
+          status: { $first: "$status" },
+          shippingAddress: { $first: "$shippingAddress" },
+          paymentStatus: { $first: "$paymentStatus" },
+          orderDate: { $first: "$orderDate" },
+          deliveryDate: { $first: "$deliveryDate" },
+          products: {
+            $push: {
+              productId: "$products.productId",
+              quantity: "$products.quantity",
+              price: "$products.price",
+            },
+          },
+          userDetails: { $first: "$userDetails" },
+          productDetails: { $first: "$productDetails" },
+        },
+      },
+    ];
+
+    // Apply pagination to the aggregation pipeline
+    const options = {
+      page: parseInt(page, 10),
+      limit: parseInt(limit, 10),
+    };
+
+    const orders = await Order.aggregatePaginate(
+      Order.aggregate(pipeline),
+      options
+    );
+
+    res.status(200).json(orders);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch orders" });
+  }
+});
+export { order, getOrder, getAllOrders };
