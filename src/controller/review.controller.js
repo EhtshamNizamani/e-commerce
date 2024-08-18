@@ -27,8 +27,27 @@ const addReview = asyncHandler(async (req, res) => {
   if (!product) {
     throw new ApiError(404, "Product not found.");
   }
+
+  // Check if the product already has a review for this order
+  const existingReview = product.ratings.find(
+    (review) => review.orderId.toString() === hasPurchased._id.toString()
+  );
+
+  if (existingReview) {
+    throw new ApiError(
+      403,
+      "You have already reviewed this product for this purchase."
+    );
+  }
+
   // Create the review object
-  const review = { userId, rating, comment, reviewDate: new Date() };
+  const review = {
+    userId,
+    orderId: hasPurchased._id,
+    rating,
+    comment,
+    reviewDate: new Date(),
+  };
   console.log(review);
 
   // Add the review to the product's ratings array
