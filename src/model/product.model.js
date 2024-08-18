@@ -36,11 +36,17 @@ const productSchema = new Schema(
       type: String, // URL to the product image
       required: [true, "Image is required"],
     },
-    ratings: [],
+    averageRating: {
+      type: Number,
+      default: 0, // To store the average rating
+      min: 0,
+      max: 5,
+    },
     numReviews: {
       type: Number,
-      default: 0,
+      default: 0, // To store the number of reviews
     },
+    ratings: [],
   },
   { timestamps: true }
 );
