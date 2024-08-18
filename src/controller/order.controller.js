@@ -87,14 +87,15 @@ const order = asyncHandler(async (req, res) => {
 
 const getOrder = asyncHandler(async (req, res) => {
   const userId = req.user?._id;
-  console.log(userId);
+  const product = await Order.find({ userId: userId });
+  console.log(product);
   const aggregate = Order.aggregate([
     { $match: { userId: userId } },
 
     {
       $lookup: {
         from: "products",
-        localField: "productId",
+        localField: "products.productId",
         foreignField: "_id",
         as: "productDetails",
       },
@@ -110,8 +111,11 @@ const getOrder = asyncHandler(async (req, res) => {
         productName: "$productDetails.name",
         productDescription: "$productDetails.description",
         productPrice: "$productDetails.price",
+
         quantity: 1,
-        totalAmount: { $multiply: ["$productDetails.price", "$quantity"] },
+        totalAmount: {
+          $multiply: ["$productDetails.price", "$productDetails.quantity"],
+        },
         status: 1,
         orderedAt: "$createdAt",
       },
@@ -128,8 +132,9 @@ const getOrder = asyncHandler(async (req, res) => {
   // Execute the aggregation with pagination
   const orderHistory = await Order.aggregatePaginate(aggregate, options);
 
-  console.log(orderHistory);
-  res.status(200).send("");
+  res
+    .status(200)
+    .json(new ApiResponse(201, orderHistory, "Order history fetched"));
 });
 
 const getAllOrders = asyncHandler(async (req, res) => {
@@ -166,12 +171,6 @@ const getAllOrders = asyncHandler(async (req, res) => {
         $group: {
           _id: "$_id",
           userId: { $first: "$userId" },
-          totalAmount: { $first: "$totalAmount" },
-          status: { $first: "$status" },
-          shippingAddress: { $first: "$shippingAddress" },
-          paymentStatus: { $first: "$paymentStatus" },
-          orderDate: { $first: "$orderDate" },
-          deliveryDate: { $first: "$deliveryDate" },
           products: {
             $push: {
               productId: "$products.productId",
@@ -179,8 +178,31 @@ const getAllOrders = asyncHandler(async (req, res) => {
               price: "$products.price",
             },
           },
+          totalAmount: { $first: "$totalAmount" },
+          status: { $first: "$status" },
+          shippingAddress: { $first: "$shippingAddress" },
+          paymentStatus: { $first: "$paymentStatus" },
+          orderDate: { $first: "$orderDate" },
+          deliveryDate: { $first: "$deliveryDate" },
+
           userDetails: { $first: "$userDetails" },
-          productDetails: { $first: "$productDetails" },
+        },
+      },
+      {
+        $project: {
+          userId: 1,
+          products: 1,
+          totalAmount: 1,
+          status: 1,
+          shippingAddress: 1,
+          paymentStatus: 1,
+          orderDate: 1,
+          deliveryDate: 1,
+          userDetails: {
+            name: 1,
+            email: 1,
+            _id: 1, // This will include the user's ID, which is typically the same as _id in MongoDB
+          },
         },
       },
     ];
@@ -201,4 +223,45 @@ const getAllOrders = asyncHandler(async (req, res) => {
     res.status(500).json({ error: "Failed to fetch orders" });
   }
 });
-export { order, getOrder, getAllOrders };
+const getSingleOrder = asyncHandler(async (req, res) => {
+  const { orderId } = req.params;
+
+  if (!orderId) {
+    throw new ApiError(404, "Please provide a valid id");
+  }
+
+  const product = await Order.findById(orderId);
+  if (!product) {
+    throw new ApiError(404, "Order not found");
+  }
+
+  res.status(200).json(new ApiResponse(201, product, "Order fetched"));
+});
+const updateOrderStatus = asyncHandler(async (req, res) => {
+  const { orderId } = req.params;
+  const { orderStatus } = req.body;
+
+  const userId = req.user?._id;
+  if (!orderId) {
+    throw new ApiError(404, "Please provide a valid id");
+  }
+  if (!userId) {
+    throw new ApiError(402, "Invalid credential");
+  }
+  const user = await User.findById(userId);
+  if (user.role !== "admin") {
+    throw new ApiError(403, "Only admin can update status");
+  }
+
+  const updatedOrder = await Order.findByIdAndUpdate(
+    orderId,
+    { $set: { status: orderStatus } },
+    { new: true }
+  );
+  if (!updatedOrder) {
+    throw new ApiError(404, "Order not found");
+  }
+  res.status(200).json(new ApiResponse(201, updatedOrder, "Order fetched"));
+});
+
+export { order, getOrder, getAllOrders, getSingleOrder, updateOrderStatus };
