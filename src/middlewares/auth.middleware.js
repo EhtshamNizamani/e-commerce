@@ -4,7 +4,10 @@ import { User } from "../model/user.model.js";
 
 const jwtAuth = async (req, res, next) => {
   try {
-    const token = req.header("Authorization")?.replace("Bearer ", "");
+    const token =
+      req.cookies?.accessToken ||
+      req.header("Authorization")?.replace("Bearer ", "");
+
     if (!token) {
       throw new ApiError(401, "Unauthorized user");
     }
